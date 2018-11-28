@@ -1,0 +1,42 @@
+#!/bin/bash
+
+file=/etc/dhcp/iot_client.conf
+pass_log=alive_log
+fail_log=dead_log
+hosts_ip=(`cat $file | awk '{print $2}'`)
+hosts_mac=(`cat $file | awk '{print $3}'`)
+hosts_name=(`cat $file | awk '{print $1}'`)
+echo "" > $pass_log
+echo "" > $fail_log
+time=2
+
+for ((i=0; i<${#hosts_ip[@]}; i++))
+
+do
+   echo  "Host:${hosts_name[$i]}, IP:${hosts_ip[$i]}, MAC:${hosts_mac[$i]}"
+   ping -c $time ${hosts_ip[$i]} > /dev/null 
+   if [ $? == 0 ]
+   then
+      
+      macaddr=`arp -i eth0 | grep ${hosts_ip[$i]} | awk '{print $3}' | tr 'a-z' 'A-Z'`
+      
+      if [ $macaddr == ${hosts_mac[$i]} ] ;then
+     	   echo " --> Pass" 
+           echo "Host:${hosts_name[$i]} --> ${hosts_mac[$i]}-${hosts_ip[$i]} `date '+%m%d-%X'`" >> $pass_log
+       else
+           echo "---> Fail"
+	   echo "Host:${hosts_name[$i]} --> Error device ,check ${hosts_mac[$i]}-${hosts_ip[$i]} `date '+%m%d-%X'` " >> $fail_log
+      
+      fi
+   else
+      echo  ${hosts_ip[$i]} is down
+      echo  "plase check ${hosts_name[$i]}" 
+      echo "Host:${hosts_name[$i]} --> Error device ,check ${hosts_mac[$i]}-${hosts_ip[$i]} `date '+%m%d-%X'` " >> $fail_log
+      sleep 3
+
+   fi
+   echo "=========================================="
+done
+
+echo total:${#hosts_name[@]} clients
+
